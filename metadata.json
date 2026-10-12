@@ -1,0 +1,6 @@
+{
+  "name": "SaaS Boilerplate Premium - Taxonomy Evolution",
+  "description": "Boilerplate SaaS de producción con Next.js 14, Lemon Squeezy, Prisma, shadcn/ui y temas múltiples.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
