@@ -1,0 +1,169 @@
+// =============================================================================
+// PRISMA SCHEMA - SAAS BOILERPLATE PREMIUM
+// Provider: PostgreSQL (o MySQL según tu proveedor de base de datos)
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Cambia a "mysql" si utilizas MySQL / PlanetScale
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// NEXTAUTH & USER MODELS
+// -----------------------------------------------------------------------------
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String   @map("provider_account_id")
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Auth Relations
+  accounts Account[]
+  sessions Session[]
+
+  // Legacy Content / Blog
+  posts Post[]
+
+  // Lemon Squeezy Subscriptions & Billing
+  lemonSqueezyCustomerId       String?   @unique @map("lemon_squeezy_customer_id")
+  lemonSqueezySubscriptionId   String?   @unique @map("lemon_squeezy_subscription_id")
+  lemonSqueezyPriceId          String?   @map("lemon_squeezy_price_id")
+  lemonSqueezyVariantId        String?   @map("lemon_squeezy_variant_id")
+  lemonSqueezyCurrentPeriodEnd DateTime? @map("lemon_squeezy_current_period_end")
+  lemonSqueezyStatus           String?   @map("lemon_squeezy_status") // "active", "cancelled", "past_due", etc.
+
+  // SaaS Starter CRUD Relations
+  projects Project[]
+  tasks    Task[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// -----------------------------------------------------------------------------
+// POST / BLOG MODEL (Taxonomy Original)
+// -----------------------------------------------------------------------------
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   Json?
+  published Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  authorId  String   @map("author_id")
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@map("posts")
+}
+
+// -----------------------------------------------------------------------------
+// SAAS STARTER CRUD: PROJECT & TASK MODELS
+// -----------------------------------------------------------------------------
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  slug        String
+  color       String?  @default("#3b82f6") // Color de etiqueta hex
+  userId      String   @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@map("projects")
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?      @db.Text
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?    @map("due_date")
+  projectId   String       @map("project_id")
+  userId      String       @map("user_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  // Relaciones
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@map("tasks")
+}
